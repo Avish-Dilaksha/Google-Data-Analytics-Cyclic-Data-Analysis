@@ -1,0 +1,605 @@
+---
+title: "R Notebook for Cyclic data analysis"
+output:
+  html_document:
+    df_print: paged
+---
+## Introduction
+
+This is my version of the Google Data Analytics Capstone - Case study 01. The full documents for the case study can be found in the Google Data Analytics Capstone Project : Complete a Case Study course
+
+For this project I will follow the steps of data analysis process: 
+
+* Ask 
+* Prepare
+* Process
+* Analyze
+* Share 
+* Act
+
+### Ask
+
+
+
+
+
+#### What is the problem we are trying to solve?
+
+Design marketing strategies aimed at converting casual riders into annual members.
+
+
+
+#### What is the business question?
+
+"How do annual members and casual riders use Cyclistic bikes differently?"
+
+
+
+#### How can y insights drive business decisions?
+
+The insights will help the marketing team to increase annual members.
+
+
+
+#### Identify key Stakeholders
+
+Cyclistic executive team: The notoriously detail-oriented executive team will decide whether to approve the recommended marketing program.
+
+Lily Moreno: The director of marketing and your manager
+
+
+
+### Prepare
+
+
+
+
+#### Where is data is located?
+
+The data is located in the link provided by Google and we can find it in Kaggle also.
+
+
+
+#### How is the data organized?
+
+The data is separated by month, each on it's own csv.
+
+
+
+#### Are there issues with bias or credibility in this data? Does your data is ROCCC?
+
+In this case bias won't be a problem because the population of the datasetnis it's own clients as bike riders. And have  full credibility for the same reason. And finally, it's ROCCC because it is reliable, original, comprehensive, curent and cited.
+
+
+
+#### How did you verify the data's integrity? And how did you answer your question?
+
+All the files have consistent columns and each column has the correct type of data.It may have some key insights about the riders and their riding style.
+
+
+
+### Process
+
+
+
+
+#### Overview
+
+* Manipulating the data
+
+    New columns will help improve calculation time in the future
+
+
+01 : Load all of the libraries : 
+  * tidyverse for calculations
+  * lubridate for deal with dates
+  * hms to deal with time
+  * data.table to exporting data frame
+  
+
+Load Libraries
+```{r}
+library(tidyverse)
+library(lubridate)
+library(hms)
+library(data.table)
+```
+
+
+02 : Uploaded all of the original data from the data source divytrip into R using read_csv function to upload all individual csv files and save them in separate data frames. For august 2022 data I saved it into aug08_df, september 2022 to sep09_df and so on.
+```{r}
+aug08_df <-  read.csv("Trip_data_csv/202108-divvy-tripdata.csv")
+sep09_df <-  read.csv("Trip_data_csv/202109-divvy-tripdata.csv")
+oct10_df <-  read.csv("Trip_data_csv/202110-divvy-tripdata.csv")
+nov11_df <-  read.csv("Trip_data_csv/202111-divvy-tripdata.csv")
+dec12_df <-  read.csv("Trip_data_csv/202112-divvy-tripdata.csv")
+jan01_df <-  read.csv("Trip_data_csv/202201-divvy-tripdata.csv")
+feb02_df <-  read.csv("Trip_data_csv/202202-divvy-tripdata.csv")
+mar03_df <-  read.csv("Trip_data_csv/202203-divvy-tripdata.csv")
+apr04_df <-  read.csv("Trip_data_csv/202204-divvy-tripdata.csv")
+may05_df <-  read.csv("Trip_data_csv/202205-divvy-tripdata.csv")
+jun06_df <-  read.csv("Trip_data_csv/202206-divvy-tripdata.csv")
+jul07_df <-  read.csv("Trip_data_csv/202207-divvy-tripdata.csv")
+```
+
+
+03 : Merged the 12 months of data together using rbind to create a one year view
+```{r}
+cyclistic_df <- rbind(aug08_df, sep09_df, oct10_df, nov11_df, dec12_df, jan01_df, feb02_df, mar03_df, apr04_df, may05_df, jun06_df, jul07_df)
+```
+
+
+04 : Remove individual month data frames to clear up space in the environment
+```{r}
+remove(aug08_df, sep09_df, oct10_df, nov11_df, dec12_df, jan01_df, feb02_df, mar03_df, apr04_df, may05_df, jun06_df, jul07_df)
+```
+
+
+Have a look on the dataset
+```{r}
+head(cyclistic_df)
+```
+```{r}
+nrow(cyclistic_df)
+```
+
+
+
+05 : Created a new data frame called cyclistic_date that would contain all of my new columns
+```{r}
+cyclistic_date <- cyclistic_df
+```
+
+06 : Created new columns for :
+
+  * Ride length - subtract end_at time from start_at time
+  * Day of the week
+  * Month
+  * Day
+  * Year
+  * Time - convert the time to HH:MM:SS format
+  * Hour
+  * Season - spring,summer,winter or fall
+  * Time to day- Night, Morning, afternoon or Evening
+
+
+```{r}
+#calculate ride length by subtracting ended_at time from started_at time and converted it to minutes
+cyclistic_date$ride_length <- difftime(cyclistic_date$ended_at , cyclistic_date$started_at, units = "mins")
+```
+
+
+```{r}
+#create columns for: day of week, month, day, year, time, hour
+cyclistic_date$date <- as.Date(cyclistic_date$started_at)
+```
+
+
+```{r}
+#calculate the day of the week
+cyclistic_date$day_of_the_week <- wday(cyclistic_df$started_at)
+#create the column for day of the week
+cyclistic_date$day_of_the_week <- format(as.Date(cyclistic_date$date), "%A")
+```
+
+
+```{r}
+#create the column for month
+cyclistic_date$month <- format(as.Date(cyclistic_date$date), "%m")
+```
+
+
+```{r}
+#create the column for day
+cyclistic_date$day <- format(as.Date(cyclistic_date$date), "%d")
+```
+
+
+```{r}
+#create the column for day of the week
+cyclistic_date$year <- format(as.Date(cyclistic_date$date), "%y")
+```
+
+
+```{r}
+#create the column for start_hour
+cyclistic_date <- cyclistic_date %>%
+  mutate(start_hour = strftime(cyclistic_date$started_at, "%H"))
+```
+
+
+```{r}
+
+#create column for different seasons: Spring, Summer, Fall, Winter
+cyclistic_date <-cyclistic_date %>% 
+    mutate(season = case_when(month == "03" ~ "Spring",
+                              month == "04" ~ "Spring",
+                              month == "05" ~ "Spring",
+                              month == "06"  ~ "Summer",
+                              month == "07"  ~ "Summer",
+                              month == "08"  ~ "Summer",
+                              month == "09" ~ "Fall",
+                              month == "10" ~ "Fall",
+                              month == "11" ~ "Fall",
+                              month == "12" ~ "Winter",
+                              month == "01" ~ "Winter",
+                              month == "02" ~ "Winter")
+    )
+                                           
+```
+
+
+```{r}
+#create column for different time_of_day: Night, Morning, Afternoon, Evening
+cyclistic_date <-cyclistic_date %>% 
+    mutate(time_of_day = case_when(start_hour == "00" ~ "Night",
+                                  start_hour == "01" ~ "Night",
+                                  start_hour == "02" ~ "Night",
+                                  start_hour == "03" ~ "Night",
+                                  start_hour == "04" ~ "Night",
+                                  start_hour == "05" ~ "Night",
+                                  start_hour == "06" ~ "Morning",
+                                  start_hour == "07" ~ "Morning",
+                                  start_hour == "08" ~ "Morning",
+                                  start_hour == "09" ~ "Morning",
+                                  start_hour == "10" ~ "Morning",
+                                  start_hour == "11" ~ "Morning",
+                                  start_hour == "12" ~ "Afternoon",
+                                  start_hour == "13" ~ "Afternoon",
+                                  start_hour == "14" ~ "Afternoon",
+                                  start_hour == "15" ~ "Afternoon",
+                                  start_hour == "16" ~ "Afternoon",
+                                  start_hour == "17" ~ "Afternoon",
+                                  start_hour == "18" ~ "Evening",
+                                  start_hour == "19" ~ "Evening",
+                                  start_hour == "20" ~ "Evening",
+                                  start_hour == "21" ~ "Evening",
+                                  start_hour == "22" ~ "Evening",
+                                  start_hour == "23" ~ "Evening")
+    )
+```
+
+
+check the dataset
+```{r}
+head(cyclistic_date)
+```
+```{r}
+nrow(cyclistic_date)
+```
+
+
+
+
+
+* Data cleaning
+
+
+    Cleaned the data by:
+
+    * Removing duplicate rows
+    * Remove rows with NA values (blank rows)
+    * Remove where ride_length is 0 or negative (ride_length should be a positive number)
+    * Remove unnecessary columns:start_station_id, end_station_id, start_lat, start_long, end_lat, end_lng
+    
+    
+```{r}
+#remove duplicate values
+cyclistic_date <- distinct(cyclistic_date)
+nrow(cyclistic_date)
+```
+
+
+```{r}
+#remove rows with NA values
+cyclistic_date <- na.omit(cyclistic_date)
+nrow(cyclistic_date)
+```
+
+
+```{r}
+#remove where ride length is 0 or negative
+cyclistic_date <- cyclistic_date[!(cyclistic_date$ride_length <= 0), ]
+nrow(cyclistic_date)
+```
+
+
+```{r}
+colnames(cyclistic_date)
+```
+```{r}
+#Remove unnecessary columns
+cyclistic <- subset(cyclistic_date, select = -c(start_station_name, start_station_id, end_station_name, end_station_id,start_lat,start_lng,end_lat,end_lng))
+```
+
+
+```{r}
+head(cyclistic)
+```
+
+
+
+saving the result as a CSV
+```{r}
+cyclistic_date %>%
+  write.csv("cyclistic_clean.csv")
+```
+
+remove cyclic_date & cyclistic_df
+```{r}
+remove(cyclistic_date, cyclistic_df)
+```
+
+
+    
+### Analyze
+
+#### The cleaned data has been organized into a single CSV file. 
+
+view the final data
+```{r}
+head(cyclistic)
+```
+
+
+total no of rows
+```{r}
+nrow(cyclistic)
+```
+
+    
+summary about data
+```{r}
+summary(cyclistic)
+```
+
+
+
+
+#### Data distribution
+
+Here we will see how the data is distributed
+
+
+
+
+
+Casuals vs members
+
+
+
+The data distribution between Casuals vs Members
+```{r}
+cyclistic %>%
+  group_by(member_casual) %>%
+  summarise(count = length(ride_id),
+            '%' = (length(ride_id) / nrow(cyclistic)) * 100)
+
+```
+
+```{r}
+ggplot(cyclistic)+
+  geom_bar(mapping = aes(member_casual, fill = member_casual)) +
+  labs(x = "Casuals x Members", title = "Casuals vs Members Distribution")           
+```
+
+* We can see that members have a bigger proportion of the dataset.
+
+
+
+
+Month
+
+
+
+The data distributed by month
+```{r}
+cyclistic %>%
+    group_by(month) %>%
+    summarise(count = length(ride_id),
+              '%' = (length(ride_id) / nrow(cyclistic)) * 100,
+              'members_p' = (sum(member_casual == "member") / length(ride_id)) * 100,
+              'casual_p' = (sum(member_casual == "casual") / length(ride_id)) * 100,
+              'Member x Casual Perc Difer' = members_p - casual_p)
+```
+
+
+```{r}
+ggplot(cyclistic) + 
+  geom_bar(mapping = aes(month, fill = member_casual)) +
+  labs(x = "Month", title = "Monthly Distribution") +
+  coord_flip()
+```
+
+* The month with the biggest count of data points was August.
+* In all months we have more members' rides than casual rides.
+
+
+
+
+season
+
+
+
+The data distribution by Season
+```{r}
+cyclistic %>%
+    group_by(season) %>%
+    summarise(count = length(ride_id),
+              '%' = (length(ride_id) / nrow(cyclistic)) * 100,
+              'members_p' = (sum(member_casual == "member") / length(ride_id)) * 100,
+              'casual_p' = (sum(member_casual == "casual") / length(ride_id)) * 100,
+              'Member x Casual Perc Difer' = members_p - casual_p)
+```
+
+```{r}
+ggplot(cyclistic) + 
+  geom_bar(mapping = aes(season, fill = member_casual)) +
+  labs(x = "Season", title = "Season Distribution")
+```
+
+* There's more data points at the summer season.
+
+
+
+Weekday
+
+
+The data distribution by weekday
+```{r}
+cyclistic %>%
+    group_by(day_of_the_week) %>% 
+    summarise(count = length(ride_id),
+              '%' = (length(ride_id) / nrow(cyclistic)) * 100,
+              'members_p' = (sum(member_casual == "member") / length(ride_id)) * 100,
+              'casual_p' = (sum(member_casual == "casual") / length(ride_id)) * 100,
+              'Member x Casual Perc Difer' = members_p - casual_p)
+```
+
+```{r}
+ggplot(cyclistic) + 
+  geom_bar(mapping = aes(day_of_the_week, fill = member_casual)) +
+  labs(x = "day of the week", title = "Weekday Distribution")
+```
+
+* The biggest volume of data is on the weekend specially on Saturday.
+* Besides on weekend, members may have the biggest volume of data.
+
+
+
+Hour of the day
+
+
+```{r}
+cyclistic %>%
+    group_by(start_hour) %>% 
+    summarise(count = length(ride_id),
+          '%' = (length(ride_id) / nrow(cyclistic)) * 100,
+          'members_p' = (sum(member_casual == "member") / length(ride_id)) * 100,
+          'casual_p' = (sum(member_casual == "casual") / length(ride_id)) * 100,
+          'member_casual_perc_difer' = members_p - casual_p)
+
+```
+
+```{r}
+ggplot(cyclistic) + 
+  geom_bar(mapping = aes(start_hour, fill = member_casual)) +
+  labs(x = "Hour of the day", title = "Hourly Distribution")
+```
+
+* There's a bigger volume of bikers in hours of 14 - 19.
+
+
+We can expand the chart per week day
+```{r}
+ggplot(cyclistic) + 
+  geom_bar(mapping = aes(start_hour, fill = member_casual)) +
+  labs(x = "Hour of the day", title = "Hourly Distribution") +
+  facet_wrap(~ day_of_the_week)
+```
+
+* There's a clear diferrence between the midweek and weekends.
+* While the weekends have a smooth flow of data points, the midweek have a more steep flow of data.
+* There's a big increase of data points in the midween between 6am to 8am. Then it fall a bit.
+* Another big increase is from 5pm to 6pm.
+* During the weekend we have a bigger flow of casuals between 11am to 6pm.
+
+
+
+Time of the day
+
+The data distribution by time of the day
+```{r}
+cyclistic %>%
+    group_by(time_of_day) %>% 
+    summarise(count = length(ride_id),
+          '%' = (length(ride_id) / nrow(cyclistic)) * 100,
+          'members_p' = (sum(member_casual == "member") / length(ride_id)) * 100,
+          'casual_p' = (sum(member_casual == "casual") / length(ride_id)) * 100,
+          'member_casual_perc_difer' = members_p - casual_p)
+```
+
+```{r}
+ggplot(cyclistic) + 
+  geom_bar(mapping = aes(time_of_day, fill = member_casual)) +
+  labs(x = "Time of the day", title = "Timely Distribution")
+```
+There is a bigger volume of bikers in afternoon and evening.
+
+
+
+Rideable type
+
+
+
+```{r}
+cyclistic %>%
+    group_by(rideable_type) %>% 
+    summarise(count = length(ride_id),
+          '%' = (length(ride_id) / nrow(cyclistic)) * 100,
+          'members_p' = (sum(member_casual == "member") / length(ride_id)) * 100,
+          'casual_p' = (sum(member_casual == "casual") / length(ride_id)) * 100,
+          'member_casual_perc_difer' = members_p - casual_p)
+```
+
+```{r}
+ggplot(cyclistic) + 
+  geom_bar(mapping = aes(rideable_type, fill = member_casual)) +
+  labs(x = "Rideable type", title = "Distribution of type  of bikes")
+```
+          
+* We can see that no member used docked bikes.
+* Classic bikes have the biggest volume of rides.
+But this can happen when the company may have more electric and classic bikes.
+
+
+Ride length
+
+
+```{r}
+cyclistic %>% 
+    group_by(member_casual) %>% 
+    summarise(mean = mean(ride_length),
+              'first_quarter' = as.numeric(quantile(ride_length, .25)),
+              'median' = median(ride_length),
+              'third_quarter' = as.numeric(quantile(ride_length, .75)),
+              'IR' = third_quarter - first_quarter)
+```
+
+* Casual have more riding time than members.
+* Mean and IQR is also bigger for casual.
+
+
+
+
+#### Summary
+
+
+#### Surprise of the data
+
+One of the main surprises is how members differ from casuals when analysed from weekdays. Also that members have less riding time than casual.
+
+#### Trends or relationships found in the data
+
+* There are more members than casuals in the dataset.
+* There are more data points in the summer season.
+* There are more of a difference between the flow of members/casual from midweek to weekends.
+* Members have less riding time.
+* Riderss tend to prefer classic and electric bikes over docked bikes.
+
+
+### Share
+
+The share phase is usually done by building a presentation.
+We can share our findings over a presentation.
+
+
+### Act
+
+The act phase would be done by the marketing team of the company. The main takeaway will be the top three recommendations for the marketing.
+
+
+
+### Conclusion
+
+The Google Analytics Professional Certificate thought me a lot and the R language is really useful for analyzing data (although I prefer prefer pandas). This took me more time than I expected, but it was fun.
